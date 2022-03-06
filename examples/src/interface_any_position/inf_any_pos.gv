@@ -14,22 +14,31 @@ digraph gocallvis {
     edge [minlen="2"]
 
     subgraph "cluster_focus" {
-        bgcolor="#e6ecfa";
+        fontsize="18";
+bgcolor="#e6ecfa";
 label="main";
 labelloc="t";
 labeljust="c";
-fontsize="18";
         
-        "interface_any_position.passInf" [ fillcolor="lightblue" label="passInf" penwidth="0.5" tooltip="interface_any_position.passInf | defined in main.go:13\nat main.go:14: calling [(interface_any_position.S).f]" ]
-        "(interface_any_position.S).f" [ fillcolor="lightblue" label="(S).f" penwidth="0.5" tooltip="(interface_any_position.S).f | defined in main.go:9" ]
-        "interface_any_position.main$1" [ fillcolor="lightblue" label="main$1" style="dotted,filled" tooltip="interface_any_position.main$1 | defined in main.go:22\nat main.go:23: calling [(interface_any_position.S).f]" ]
-        "interface_any_position.main" [ fillcolor="lightblue" label="main" penwidth="0.5" tooltip="interface_any_position.main | defined in main.go:18\nat main.go:20: calling [interface_any_position.passInf]\nat main.go:22: calling [interface_any_position.main$1]\nat main.go:20: calling [(interface_any_position.S).f]" ]
+        "interface_any_position.passInf" [ penwidth="0.5" tooltip="interface_any_position.passInf | defined in main.go:18\nat main.go:19: calling [(interface_any_position.T).f]\nat main.go:19: calling [(interface_any_position.S).f]" fillcolor="lightblue" label="passInf" ]
+        "(interface_any_position.S).f" [ fillcolor="lightblue" label="(S).f" penwidth="0.5" tooltip="(interface_any_position.S).f | defined in main.go:10" ]
+        "(interface_any_position.T).f" [ fillcolor="lightblue" label="(T).f" penwidth="0.5" tooltip="(interface_any_position.T).f | defined in main.go:14" ]
+        "interface_any_position.main" [ fillcolor="lightblue" label="main" penwidth="0.5" tooltip="interface_any_position.main | defined in main.go:23\nat main.go:32: calling [interface_any_position.main$2]\nat main.go:39: calling [(interface_any_position.T).f]\nat main.go:25: calling [(interface_any_position.T).f]\nat main.go:28: calling [interface_any_position.main$1]\nat main.go:39: calling [(interface_any_position.S).f]\nat main.go:25: calling [(interface_any_position.S).f]\nat main.go:25: calling [interface_any_position.passInf]" ]
+        "interface_any_position.main$1" [ tooltip="interface_any_position.main$1 | defined in main.go:28\nat main.go:29: calling [(interface_any_position.S).f]\nat main.go:29: calling [(interface_any_position.T).f]" fillcolor="lightblue" label="main$1" style="dotted,filled" ]
+        "interface_any_position.main$2" [ fillcolor="lightblue" label="main$2" style="dotted,filled" tooltip="interface_any_position.main$2 | defined in main.go:32\nat main.go:33: calling [(interface_any_position.T).f]\nat main.go:33: calling [interface_any_position.passInf]\nat main.go:33: calling [(interface_any_position.S).f]" ]
         
     }
 
-    "interface_any_position.passInf" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:14: calling [(interface_any_position.S).f]" ]
-    "interface_any_position.main$1" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:23: calling [(interface_any_position.S).f]" ]
-    "interface_any_position.main" -> "interface_any_position.passInf" [ tooltip="at main.go:20: calling [interface_any_position.passInf]" ]
-    "interface_any_position.main" -> "interface_any_position.main$1" [ arrowhead="normalnoneodot" tooltip="at main.go:22: calling [interface_any_position.main$1]" ]
-    "interface_any_position.main" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:20: calling [(interface_any_position.S).f]" ]
+    "interface_any_position.main$2" -> "(interface_any_position.T).f" [ style="dashed" tooltip="at main.go:33: calling [(interface_any_position.T).f]" ]
+    "interface_any_position.main" -> "interface_any_position.main$2" [ arrowhead="normalnoneodot" tooltip="at main.go:32: calling [interface_any_position.main$2]" ]
+    "interface_any_position.main" -> "(interface_any_position.T).f" [ style="dashed" tooltip="at main.go:39: calling [(interface_any_position.T).f]\nat main.go:25: calling [(interface_any_position.T).f]" ]
+    "interface_any_position.passInf" -> "(interface_any_position.T).f" [ tooltip="at main.go:19: calling [(interface_any_position.T).f]" style="dashed" ]
+    "interface_any_position.main$1" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:29: calling [(interface_any_position.S).f]" ]
+    "interface_any_position.main$1" -> "(interface_any_position.T).f" [ style="dashed" tooltip="at main.go:29: calling [(interface_any_position.T).f]" ]
+    "interface_any_position.main" -> "interface_any_position.main$1" [ arrowhead="normalnoneodot" tooltip="at main.go:28: calling [interface_any_position.main$1]" ]
+    "interface_any_position.main$2" -> "interface_any_position.passInf" [ tooltip="at main.go:33: calling [interface_any_position.passInf]" ]
+    "interface_any_position.main$2" -> "(interface_any_position.S).f" [ tooltip="at main.go:33: calling [(interface_any_position.S).f]" style="dashed" ]
+    "interface_any_position.main" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:39: calling [(interface_any_position.S).f]\nat main.go:25: calling [(interface_any_position.S).f]" ]
+    "interface_any_position.passInf" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:19: calling [(interface_any_position.S).f]" ]
+    "interface_any_position.main" -> "interface_any_position.passInf" [ tooltip="at main.go:25: calling [interface_any_position.passInf]" ]
 }
