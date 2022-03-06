@@ -1,0 +1,44 @@
+digraph gocallvis {
+    label="command-line-arguments";
+    labeljust="l";
+    fontname="Arial";
+    fontsize="14";
+    rankdir="LR";
+    bgcolor="lightgray";
+    style="solid";
+    penwidth="0.5";
+    pad="0.0";
+    nodesep="0.35";
+
+    node [shape="box" style="filled,rounded" fillcolor="honeydew" fontname="Verdana" penwidth="1.0" margin="0.05,0.0"];
+    edge [minlen="2"]
+
+    subgraph "cluster_focus" {
+        bgcolor="#e6ecfa";
+label="main";
+labelloc="t";
+labeljust="c";
+fontsize="18";
+        
+        "command-line-arguments.interface_call" [ penwidth="0.5" tooltip="command-line-arguments.interface_call | defined in main.go:62\nat main.go:63: calling [(command-line-arguments.E).m]\nat main.go:63: calling [(command-line-arguments.C).m]\nat main.go:64: calling [(command-line-arguments.F).p]\nat main.go:63: calling [(command-line-arguments.A).m]\nat main.go:63: calling [(command-line-arguments.B).m]\nat main.go:64: calling [(command-line-arguments.A).p]" fillcolor="lightblue" label="interface_call" ]
+        "(command-line-arguments.E).m" [ label="(E).m" penwidth="0.5" tooltip="(command-line-arguments.E).m | defined in main.go:54" fillcolor="lightblue" ]
+        "(command-line-arguments.C).m" [ tooltip="(command-line-arguments.C).m | defined in main.go:50" fillcolor="lightblue" label="(C).m" penwidth="0.5" ]
+        "(command-line-arguments.F).p" [ tooltip="(command-line-arguments.F).p | defined in main.go:58" fillcolor="lightblue" label="(F).p" penwidth="0.5" ]
+        "(command-line-arguments.A).m" [ fillcolor="lightblue" label="(A).m" penwidth="0.5" tooltip="(command-line-arguments.A).m | defined in main.go:38" ]
+        "(command-line-arguments.B).m" [ tooltip="(command-line-arguments.B).m | defined in main.go:46" fillcolor="lightblue" label="(B).m" penwidth="0.5" ]
+        "(command-line-arguments.A).p" [ fillcolor="lightblue" label="(A).p" penwidth="0.5" tooltip="(command-line-arguments.A).p | defined in main.go:42" ]
+        "command-line-arguments.main" [ label="main" penwidth="0.5" tooltip="command-line-arguments.main | defined in main.go:67\nat main.go:69: calling [command-line-arguments.interface_call]\nat main.go:70: calling [command-line-arguments.all]" fillcolor="lightblue" ]
+        "command-line-arguments.all" [ fillcolor="lightblue" label="all" penwidth="0.5" tooltip="command-line-arguments.all | defined in main.go:73\nat main.go:82: calling [command-line-arguments.interface_call]\nat main.go:83: calling [command-line-arguments.interface_call]\nat main.go:84: calling [command-line-arguments.interface_call]\nat main.go:85: calling [command-line-arguments.interface_call]\nat main.go:86: calling [command-line-arguments.interface_call]\nat main.go:87: calling [command-line-arguments.interface_call]\nat main.go:88: calling [command-line-arguments.interface_call]\nat main.go:89: calling [command-line-arguments.interface_call]" ]
+        
+    }
+
+    "command-line-arguments.all" -> "command-line-arguments.interface_call" [ tooltip="at main.go:82: calling [command-line-arguments.interface_call]\nat main.go:83: calling [command-line-arguments.interface_call]\nat main.go:84: calling [command-line-arguments.interface_call]\nat main.go:85: calling [command-line-arguments.interface_call]\nat main.go:86: calling [command-line-arguments.interface_call]\nat main.go:87: calling [command-line-arguments.interface_call]\nat main.go:88: calling [command-line-arguments.interface_call]\nat main.go:89: calling [command-line-arguments.interface_call]" ]
+    "command-line-arguments.interface_call" -> "(command-line-arguments.E).m" [ style="dashed" tooltip="at main.go:63: calling [(command-line-arguments.E).m]" ]
+    "command-line-arguments.interface_call" -> "(command-line-arguments.C).m" [ style="dashed" tooltip="at main.go:63: calling [(command-line-arguments.C).m]" ]
+    "command-line-arguments.interface_call" -> "(command-line-arguments.F).p" [ style="dashed" tooltip="at main.go:64: calling [(command-line-arguments.F).p]" ]
+    "command-line-arguments.interface_call" -> "(command-line-arguments.A).m" [ style="dashed" tooltip="at main.go:63: calling [(command-line-arguments.A).m]" ]
+    "command-line-arguments.main" -> "command-line-arguments.interface_call" [ tooltip="at main.go:69: calling [command-line-arguments.interface_call]" ]
+    "command-line-arguments.interface_call" -> "(command-line-arguments.B).m" [ style="dashed" tooltip="at main.go:63: calling [(command-line-arguments.B).m]" ]
+    "command-line-arguments.interface_call" -> "(command-line-arguments.A).p" [ tooltip="at main.go:64: calling [(command-line-arguments.A).p]" style="dashed" ]
+    "command-line-arguments.main" -> "command-line-arguments.all" [ tooltip="at main.go:70: calling [command-line-arguments.all]" ]
+}

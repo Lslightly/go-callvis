@@ -1,0 +1,35 @@
+digraph gocallvis {
+    label="interface_any_position";
+    labeljust="l";
+    fontname="Arial";
+    fontsize="14";
+    rankdir="LR";
+    bgcolor="lightgray";
+    style="solid";
+    penwidth="0.5";
+    pad="0.0";
+    nodesep="0.35";
+
+    node [shape="box" style="filled,rounded" fillcolor="honeydew" fontname="Verdana" penwidth="1.0" margin="0.05,0.0"];
+    edge [minlen="2"]
+
+    subgraph "cluster_focus" {
+        bgcolor="#e6ecfa";
+label="main";
+labelloc="t";
+labeljust="c";
+fontsize="18";
+        
+        "interface_any_position.passInf" [ fillcolor="lightblue" label="passInf" penwidth="0.5" tooltip="interface_any_position.passInf | defined in main.go:13\nat main.go:14: calling [(interface_any_position.S).f]" ]
+        "(interface_any_position.S).f" [ fillcolor="lightblue" label="(S).f" penwidth="0.5" tooltip="(interface_any_position.S).f | defined in main.go:9" ]
+        "interface_any_position.main$1" [ fillcolor="lightblue" label="main$1" style="dotted,filled" tooltip="interface_any_position.main$1 | defined in main.go:22\nat main.go:23: calling [(interface_any_position.S).f]" ]
+        "interface_any_position.main" [ fillcolor="lightblue" label="main" penwidth="0.5" tooltip="interface_any_position.main | defined in main.go:18\nat main.go:20: calling [interface_any_position.passInf]\nat main.go:22: calling [interface_any_position.main$1]\nat main.go:20: calling [(interface_any_position.S).f]" ]
+        
+    }
+
+    "interface_any_position.passInf" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:14: calling [(interface_any_position.S).f]" ]
+    "interface_any_position.main$1" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:23: calling [(interface_any_position.S).f]" ]
+    "interface_any_position.main" -> "interface_any_position.passInf" [ tooltip="at main.go:20: calling [interface_any_position.passInf]" ]
+    "interface_any_position.main" -> "interface_any_position.main$1" [ arrowhead="normalnoneodot" tooltip="at main.go:22: calling [interface_any_position.main$1]" ]
+    "interface_any_position.main" -> "(interface_any_position.S).f" [ style="dashed" tooltip="at main.go:20: calling [(interface_any_position.S).f]" ]
+}

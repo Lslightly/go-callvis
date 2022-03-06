@@ -48,6 +48,7 @@ var (
 
 	debugFlag   = flag.Bool("debug", false, "Enable verbose log.")
 	versionFlag = flag.Bool("version", false, "Show version and exit.")
+	cgoPath     = flag.String("cgo_obj_path", "", "cgo's obj path. Need to include the last `/`. `go-callvis/_obj/` for example. Use `go tool cgo .` to get `_obj` directory.")
 )
 
 func init() {

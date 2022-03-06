@@ -1,0 +1,34 @@
+digraph gocallvis {
+    label="func_pointer";
+    labeljust="l";
+    fontname="Arial";
+    fontsize="14";
+    rankdir="LR";
+    bgcolor="lightgray";
+    style="solid";
+    penwidth="0.5";
+    pad="0.0";
+    nodesep="0.35";
+
+    node [shape="box" style="filled,rounded" fillcolor="honeydew" fontname="Verdana" penwidth="1.0" margin="0.05,0.0"];
+    edge [minlen="2"]
+
+    subgraph "cluster_focus" {
+        label="main";
+labelloc="t";
+labeljust="c";
+fontsize="18";
+bgcolor="#e6ecfa";
+        
+        "func_pointer.test1" [ fillcolor="lightblue" label="test1" penwidth="0.5" tooltip="func_pointer.test1 | defined in main.go:23\nat main.go:25: calling [(func_pointer.A).b]" ]
+        "(func_pointer.A).b" [ label="(A).b" penwidth="0.5" tooltip="(func_pointer.A).b | defined in main.go:9" fillcolor="lightblue" ]
+        "func_pointer.main" [ label="main" penwidth="0.5" tooltip="func_pointer.main | defined in main.go:17\nat main.go:20: calling [func_pointer.test2]\nat main.go:19: calling [func_pointer.test1]" fillcolor="lightblue" ]
+        "func_pointer.test2" [ fillcolor="lightblue" label="test2" penwidth="0.5" tooltip="func_pointer.test2 | defined in main.go:28\nat main.go:29: calling [(func_pointer.A).b]" ]
+        
+    }
+
+    "func_pointer.main" -> "func_pointer.test2" [ tooltip="at main.go:20: calling [func_pointer.test2]" ]
+    "func_pointer.test1" -> "(func_pointer.A).b" [ style="dashed" tooltip="at main.go:25: calling [(func_pointer.A).b]" ]
+    "func_pointer.main" -> "func_pointer.test1" [ tooltip="at main.go:19: calling [func_pointer.test1]" ]
+    "func_pointer.test2" -> "(func_pointer.A).b" [ tooltip="at main.go:29: calling [(func_pointer.A).b]" ]
+}

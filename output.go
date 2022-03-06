@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"go/build"
 	"go/types"
+	"io/ioutil"
+	"log"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/goccy/go-graphviz"
+	"github.com/goccy/go-graphviz/cgraph"
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/ssa"
+	"golang.org/x/tools/go/ssa/ssautil"
 )
 
 func isSynthetic(edge *callgraph.Edge) bool {
@@ -19,6 +25,31 @@ func isSynthetic(edge *callgraph.Edge) bool {
 func inStd(node *callgraph.Node) bool {
 	pkg, _ := build.Import(node.Func.Pkg.Pkg.Path(), "", 0)
 	return pkg.Goroot
+}
+
+///MYCODE
+func defaultAttr(label string) dotAttrs {
+	attrs := make(dotAttrs)
+	attrs["fillcolor"] = "lightblue"
+	attrs["label"] = label
+	attrs["style"] = "dotted,filled"
+	attrs["tooltip"] = ""
+	return attrs
+}
+
+func defaultNode(id string) *dotNode {
+	return &dotNode{
+		ID:    id,
+		Attrs: defaultAttr(id),
+	}
+}
+
+func defaultEdge(caller *dotNode, callee *dotNode) *dotEdge {
+	return &dotEdge{
+		From:  caller,
+		To:    callee,
+		Attrs: defaultAttr(""),
+	}
 }
 
 func printOutput(
@@ -148,7 +179,7 @@ func printOutput(
 
 		posCaller := prog.Fset.Position(caller.Func.Pos())
 		posCallee := prog.Fset.Position(callee.Func.Pos())
-		posEdge   := prog.Fset.Position(edge.Pos())
+		posEdge := prog.Fset.Position(edge.Pos())
 		//fileCaller := fmt.Sprintf("%s:%d", posCaller.Filename, posCaller.Line)
 		filenameCaller := filepath.Base(posCaller.Filename)
 
@@ -208,11 +239,11 @@ func printOutput(
 
 		var sprintNode = func(node *callgraph.Node, isCaller bool) *dotNode {
 			// only once
-			key         := node.Func.String()
+			key := node.Func.String()
 			nodeTooltip := ""
 
-			fileCaller  := fmt.Sprintf("%s:%d", filepath.Base(posCaller.Filename), posCaller.Line)
-			fileCallee  := fmt.Sprintf("%s:%d", filepath.Base(posCallee.Filename), posCallee.Line)
+			fileCaller := fmt.Sprintf("%s:%d", filepath.Base(posCaller.Filename), posCaller.Line)
+			fileCallee := fmt.Sprintf("%s:%d", filepath.Base(posCallee.Filename), posCallee.Line)
 
 			if isCaller {
 				nodeTooltip = fmt.Sprintf("%s | defined in %s", node.Func.String(), fileCaller)
@@ -420,25 +451,167 @@ func printOutput(
 
 	logf("%d/%d edges", len(edges), count)
 
-	dot := &dotGraph{
+	dotg := &dotGraph{
 		Title:   mainPkg.Path(),
 		Minlen:  minlen,
 		Cluster: cluster,
 		Nodes:   nodes,
 		Edges:   edges,
 		Options: map[string]string{
-			"minlen":  fmt.Sprint(minlen),
-			"nodesep": fmt.Sprint(nodesep),
+			"minlen":    fmt.Sprint(minlen),
+			"nodesep":   fmt.Sprint(nodesep),
 			"nodeshape": fmt.Sprint(nodeshape),
 			"nodestyle": fmt.Sprint(nodestyle),
-			"rankdir": fmt.Sprint(rankdir),
+			"rankdir":   fmt.Sprint(rankdir),
 		},
 	}
 
+	var go2c map[string]string
+	if *cgoPath != "" {
+		go2c, dotg = getGO2Cmap(dotg, prog)
+		dotg = addCGOdotGraph(go2c, dotg)
+	}
+
 	var buf bytes.Buffer
-	if err := dot.WriteDot(&buf); err != nil {
+	if err := dotg.WriteDot(&buf); err != nil {
 		return nil, err
 	}
 
 	return buf.Bytes(), nil
+}
+
+///MYCODE
+func getCGOdotGraphBytes() []byte {
+	clang_cmd := exec.Command("clang", "-S", "-emit-llvm", "-o", "tmp", *cgoPath+"main.cgo2.c")
+	opt_cmd := exec.Command("opt", "-analyze", "-dot-callgraph", "tmp")
+	if out, err := clang_cmd.CombinedOutput(); err != nil {
+		log.Fatal("compile error\n", string(out))
+	}
+	out, err := opt_cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal("callgraph build error\n", out)
+	}
+	outbyte, _ := ioutil.ReadFile("tmp.callgraph.dot")
+	return outbyte
+}
+
+///MYCODE	TODO
+func findNode(fn string, dotg *dotGraph) *dotNode {
+	fmt.Printf("findNode: %s\n", fn)
+	nodes := dotg.Nodes
+	fmt.Println("dotg.Nodes")
+	for _, node := range nodes {
+		fmt.Println(node.ID)
+		if node.ID == fn {
+			return node
+		}
+	}
+	fmt.Println("dotg.Cluster.Nodes")
+	for _, node := range dotg.Cluster.Nodes {
+		elems := strings.Split(node.ID, ".")
+		real_fn := elems[len(elems)-1]
+		fmt.Println(real_fn)
+		if real_fn == fn {
+			return node
+		}
+	}
+	return nil
+}
+
+///MYCODE
+func getGO2Cmap(dotg *dotGraph, prog *ssa.Program) (map[string]string, *dotGraph) {
+	go2c := make(map[string]string)
+	for fn := range ssautil.AllFunctions(prog) {
+		if strings.HasPrefix(fn.Name(), "_Cfunc_") {
+			for _, bb := range fn.Blocks {
+				for _, inst := range bb.Instrs {
+					if strings.Contains(inst.String(), "_Cfunc_") {
+						real_callee_fn := inst.String()[1:]
+						go2c[fn.Name()] = real_callee_fn
+					}
+				}
+			}
+		}
+	}
+	fmt.Println(go2c)
+	return go2c, dotg
+}
+
+func trimBrace(src string) string {
+	return src[1 : len(src)-1]
+}
+
+///MYCODE
+func addCGOdotGraph(go2c map[string]string, dotg *dotGraph) *dotGraph {
+	cgograph, err := graphviz.ParseBytes(getCGOdotGraphBytes())
+	if err != nil {
+		log.Fatal("graphviz.ParseBytes error")
+	}
+	logf("get CGO callgraph bytes")
+	edges_num := cgograph.NumberEdges()
+	node := cgograph.FirstNode()
+	nodes_num := cgograph.NumberNodes()
+	fmt.Println("nodenum", nodes_num)
+	fmt.Println("edgenum", edges_num)
+	nodes := make([]*cgraph.Node, 0)
+	for i := 0; i < nodes_num; i++ {
+		nodes = append(nodes, node)
+		fmt.Printf("node: %s\n", node.Get("label"))
+		node = cgograph.NextNode(node)
+		if node == nil {
+			break
+		}
+	}
+	fns := make(map[string]bool)
+	for _, node := range nodes {
+		caller_fn := trimBrace(node.Get("label"))
+		fmt.Printf("c graph visit %s\n", caller_fn)
+		if strings.Contains(caller_fn, "_Cfunc_") {
+			continue
+		}
+		var caller *dotNode
+		if fns[caller_fn] {
+			caller = findNode(caller_fn, dotg)
+		} else {
+			fns[caller_fn] = true
+			caller = defaultNode(caller_fn)
+		}
+		edge := cgograph.FirstOut(node)
+		for edge != nil {
+			var callee *dotNode
+			callee_exist := false
+			fmt.Printf("edge: from %s to %s\n", node.Get("label"), edge.Node().Get("label"))
+			callee_fn := trimBrace(edge.Node().Get("label"))
+			if fns[callee_fn] {
+				callee = findNode(callee_fn, dotg)
+			} else {
+				fns[callee_fn] = true
+				callee = findNode(callee_fn, dotg)
+				if callee != nil {
+					callee_exist = true
+				} else {
+					callee = defaultNode(callee_fn)
+				}
+			}
+			dotg.Nodes = append(dotg.Nodes, caller)
+			if !callee_exist {
+				dotg.Nodes = append(dotg.Nodes, callee)
+			}
+			dotg.Edges = append(dotg.Edges, defaultEdge(caller, callee))
+			edge = cgograph.NextOut(edge)
+		}
+	}
+	for _Cfunc_XXX, _cgo_XXX_Cfunc_XXX := range go2c {
+		fmt.Println(_Cfunc_XXX, _cgo_XXX_Cfunc_XXX)
+		real_callee_fn := unwrap_Cfunc_XXX(_Cfunc_XXX)
+		dotg.Edges = append(dotg.Edges, defaultEdge(findNode(_Cfunc_XXX, dotg), findNode(real_callee_fn, dotg)))
+	}
+	return dotg
+}
+
+func unwrap_Cfunc_XXX(_Cfunc_XXX string) string {
+	if !strings.HasPrefix(_Cfunc_XXX, "_Cfunc_") {
+		log.Fatalf("%s doesn't has prefix _Cfunc_", _Cfunc_XXX)
+	}
+	return strings.TrimPrefix(_Cfunc_XXX, "_Cfunc_")
 }

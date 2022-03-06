@@ -1,0 +1,33 @@
+digraph gocallvis {
+    label="interface_call";
+    labeljust="l";
+    fontname="Arial";
+    fontsize="14";
+    rankdir="LR";
+    bgcolor="lightgray";
+    style="solid";
+    penwidth="0.5";
+    pad="0.0";
+    nodesep="0.35";
+
+    node [shape="box" style="filled,rounded" fillcolor="honeydew" fontname="Verdana" penwidth="1.0" margin="0.05,0.0"];
+    edge [minlen="2"]
+
+    subgraph "cluster_focus" {
+        bgcolor="#e6ecfa";
+label="main";
+labelloc="t";
+labeljust="c";
+fontsize="18";
+        
+        "interface_call.main" [ label="main" penwidth="0.5" tooltip="interface_call.main | defined in main.go:38\nat main.go:41: calling [(interface_call.C).A1]\nat main.go:42: calling [(interface_call.A).B1]\nat main.go:47: calling [(interface_call.A).B1]\nat main.go:46: calling [(interface_call.A).A1]" fillcolor="lightblue" ]
+        "(interface_call.C).A1" [ penwidth="1.5" tooltip="(interface_call.C).A1 | defined in main.go:30" fillcolor="lightblue" label="(C).A1" ]
+        "(interface_call.A).B1" [ fillcolor="lightblue" label="(A).B1" penwidth="1.5" tooltip="(interface_call.A).B1 | defined in main.go:22" ]
+        "(interface_call.A).A1" [ label="(A).A1" penwidth="1.5" tooltip="(interface_call.A).A1 | defined in main.go:18" fillcolor="lightblue" ]
+        
+    }
+
+    "interface_call.main" -> "(interface_call.C).A1" [ tooltip="at main.go:41: calling [(interface_call.C).A1]" ]
+    "interface_call.main" -> "(interface_call.A).B1" [ tooltip="at main.go:42: calling [(interface_call.A).B1]\nat main.go:47: calling [(interface_call.A).B1]" ]
+    "interface_call.main" -> "(interface_call.A).A1" [ tooltip="at main.go:46: calling [(interface_call.A).A1]" ]
+}

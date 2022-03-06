@@ -1,0 +1,37 @@
+digraph gocallvis {
+    label="CGO";
+    labeljust="l";
+    fontname="Arial";
+    fontsize="14";
+    rankdir="LR";
+    bgcolor="lightgray";
+    style="solid";
+    penwidth="0.5";
+    pad="0.0";
+    nodesep="0.35";
+
+    node [shape="box" style="filled,rounded" fillcolor="honeydew" fontname="Verdana" penwidth="1.0" margin="0.05,0.0"];
+    edge [minlen="2"]
+
+    subgraph "cluster_focus" {
+        labeljust="c";
+fontsize="18";
+bgcolor="#e6ecfa";
+label="main";
+labelloc="t";
+        
+        "CGO._Cfunc_test" [ label="_Cfunc_test" penwidth="0.5" tooltip="CGO._Cfunc_test | defined in 850c0c4bee3762953f7d98d785e2b77a2d9539167f7c95a53bce47cbe7436839-d:37\nat 850c0c4bee3762953f7d98d785e2b77a2d9539167f7c95a53bce47cbe7436839-d:38: calling [CGO._cgo_runtime_cgocall]" fillcolor="lightblue" ]
+        "CGO._cgo_runtime_cgocall" [ fillcolor="lightblue" label="_cgo_runtime_cgocall" penwidth="0.5" tooltip="CGO._cgo_runtime_cgocall | defined in 850c0c4bee3762953f7d98d785e2b77a2d9539167f7c95a53bce47cbe7436839-d:23" ]
+        "CGO.main" [ fillcolor="lightblue" label="main" penwidth="0.5" tooltip="CGO.main | defined in main.go:14\nat main.go:15: calling [CGO._Cfunc_test]\nat main.go:16: calling [CGO.C2GO]" ]
+        "CGO.C2GO" [ fillcolor="lightblue" label="C2GO" penwidth="1.5" tooltip="CGO.C2GO | defined in callee.go:6" ]
+        
+    }
+
+    "CGO._Cfunc_test" -> "CGO._cgo_runtime_cgocall" [ tooltip="at 850c0c4bee3762953f7d98d785e2b77a2d9539167f7c95a53bce47cbe7436839-d:38: calling [CGO._cgo_runtime_cgocall]" ]
+    "CGO.main" -> "CGO._Cfunc_test" [ tooltip="at main.go:15: calling [CGO._Cfunc_test]" ]
+    "CGO.main" -> "CGO.C2GO" [ tooltip="at main.go:16: calling [CGO.C2GO]" ]
+    "test" -> "printf" [ label="" style="dotted,filled" tooltip="" fillcolor="lightblue" ]
+    "test" -> "fflush" [ tooltip="" fillcolor="lightblue" label="" style="dotted,filled" ]
+    "test" -> "CGO.C2GO" [ fillcolor="lightblue" label="" style="dotted,filled" tooltip="" ]
+    "CGO._Cfunc_test" -> "test" [ fillcolor="lightblue" label="" style="dotted,filled" tooltip="" ]
+}
