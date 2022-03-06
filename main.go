@@ -46,9 +46,9 @@ var (
 	outputFormat = flag.String("format", "svg", "output file format [svg | png | jpg | ...]")
 	cacheDir     = flag.String("cacheDir", "", "Enable caching to avoid unnecessary re-rendering, you can force rendering by adding 'refresh=true' to the URL query or emptying the cache directory")
 
-	debugFlag   = flag.Bool("debug", false, "Enable verbose log.")
-	versionFlag = flag.Bool("version", false, "Show version and exit.")
-	cgoPath     = flag.String("cgo_obj_path", "", "cgo's obj path. Need to include the last `/`. `go-callvis/_obj/` for example. Use `go tool cgo .` to get `_obj` directory.")
+	debugFlag       = flag.Bool("debug", false, "Enable verbose log.")
+	versionFlag     = flag.Bool("version", false, "Show version and exit.")
+	c_dot_callgraph = flag.String("c_dot_callgraph", "", "C code's callgraph. Use `clang -c -emit-llvm XXX.c -o XXX.bc` to generate bitcode files for all C files. Then use `llvm-link -S X1.bc X2.bc ... -o tmp.ll` to get integrated llvm IR file")
 )
 
 func init() {

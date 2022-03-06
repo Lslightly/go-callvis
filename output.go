@@ -7,7 +7,7 @@ import (
 	"go/types"
 	"io/ioutil"
 	"log"
-	"os/exec"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -28,6 +28,7 @@ func inStd(node *callgraph.Node) bool {
 }
 
 ///MYCODE
+//	get default attribute
 func defaultAttr(label string) dotAttrs {
 	attrs := make(dotAttrs)
 	attrs["fillcolor"] = "lightblue"
@@ -37,6 +38,8 @@ func defaultAttr(label string) dotAttrs {
 	return attrs
 }
 
+///MYCODE
+//	get default node given id
 func defaultNode(id string) *dotNode {
 	return &dotNode{
 		ID:    id,
@@ -44,6 +47,8 @@ func defaultNode(id string) *dotNode {
 	}
 }
 
+///MYCODE
+//	get default edge given caller and callee
 func defaultEdge(caller *dotNode, callee *dotNode) *dotEdge {
 	return &dotEdge{
 		From:  caller,
@@ -467,9 +472,11 @@ func printOutput(
 	}
 
 	var go2c map[string]string
-	if *cgoPath != "" {
-		go2c, dotg = getGO2Cmap(dotg, prog)
+	if _, err := os.Stat(*c_dot_callgraph); err == nil {
+		go2c = getGO2Cmap(prog)
 		dotg = addCGOdotGraph(go2c, dotg)
+	} else {
+		fmt.Printf("%s does not exist\n", *c_dot_callgraph)
 	}
 
 	var buf bytes.Buffer
@@ -481,21 +488,17 @@ func printOutput(
 }
 
 ///MYCODE
+//	need to use `clang -c -emit-llvm XXX.c -o XXX.bc` to generate bitcode files for all C files.
+//	then use `llvm-link -S X1.bc X2.bc ... -o tmp.ll` to get integrated llvm IR file
+//	last, this function is called to genereate callgraph tmp.ll.callgraph.dot
 func getCGOdotGraphBytes() []byte {
-	clang_cmd := exec.Command("clang", "-S", "-emit-llvm", "-o", "tmp", *cgoPath+"main.cgo2.c")
-	opt_cmd := exec.Command("opt", "-analyze", "-dot-callgraph", "tmp")
-	if out, err := clang_cmd.CombinedOutput(); err != nil {
-		log.Fatal("compile error\n", string(out))
-	}
-	out, err := opt_cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal("callgraph build error\n", out)
-	}
-	outbyte, _ := ioutil.ReadFile("tmp.callgraph.dot")
+	outbyte, _ := ioutil.ReadFile(*c_dot_callgraph)
 	return outbyte
 }
 
-///MYCODE	TODO
+///MYCODE
+//	first find node in C nodes, then find node in Go nodes
+//	return node whose name matches fn, nil instead.
 func findNode(fn string, dotg *dotGraph) *dotNode {
 	fmt.Printf("findNode: %s\n", fn)
 	nodes := dotg.Nodes
@@ -519,99 +522,74 @@ func findNode(fn string, dotg *dotGraph) *dotNode {
 }
 
 ///MYCODE
-func getGO2Cmap(dotg *dotGraph, prog *ssa.Program) (map[string]string, *dotGraph) {
+//	return map[_Cfunc_XXX] = XXX
+func getGO2Cmap(prog *ssa.Program) map[string]string {
 	go2c := make(map[string]string)
 	for fn := range ssautil.AllFunctions(prog) {
 		if strings.HasPrefix(fn.Name(), "_Cfunc_") {
-			for _, bb := range fn.Blocks {
-				for _, inst := range bb.Instrs {
-					if strings.Contains(inst.String(), "_Cfunc_") {
-						real_callee_fn := inst.String()[1:]
-						go2c[fn.Name()] = real_callee_fn
-					}
-				}
-			}
+			go2c[fn.Name()] = fn.Name()[7:]
 		}
 	}
 	fmt.Println(go2c)
-	return go2c, dotg
+	return go2c
 }
 
-func trimBrace(src string) string {
-	return src[1 : len(src)-1]
+///MYCODE
+func trim2Brace(c_fn_str string) string {
+	t := len(c_fn_str)
+	return c_fn_str[1 : t-1]
+}
+
+///MYCODE
+//	get name for C's node
+func getCFuncName(c_node *cgraph.Node) string {
+	return trim2Brace(c_node.Get("label"))
 }
 
 ///MYCODE
 func addCGOdotGraph(go2c map[string]string, dotg *dotGraph) *dotGraph {
-	cgograph, err := graphviz.ParseBytes(getCGOdotGraphBytes())
+	c_graph, err := graphviz.ParseBytes(getCGOdotGraphBytes())
 	if err != nil {
 		log.Fatal("graphviz.ParseBytes error")
 	}
 	logf("get CGO callgraph bytes")
-	edges_num := cgograph.NumberEdges()
-	node := cgograph.FirstNode()
-	nodes_num := cgograph.NumberNodes()
-	fmt.Println("nodenum", nodes_num)
-	fmt.Println("edgenum", edges_num)
-	nodes := make([]*cgraph.Node, 0)
-	for i := 0; i < nodes_num; i++ {
-		nodes = append(nodes, node)
-		fmt.Printf("node: %s\n", node.Get("label"))
-		node = cgograph.NextNode(node)
-		if node == nil {
-			break
+	c_edges_num := c_graph.NumberEdges()
+	c_node := c_graph.FirstNode()
+	c_nodes_num := c_graph.NumberNodes()
+	fmt.Println("nodenum", c_nodes_num)
+	fmt.Println("edgenum", c_edges_num)
+	nodes_map := make(map[string]*dotNode)
+	fmt.Println("----------------\nget C's callgraph nodes\n----------------")
+	for c_node != nil {
+		c_fn_str := getCFuncName(c_node)
+
+		var node *dotNode
+		if node = findNode(c_fn_str, dotg); node == nil {
+			node = defaultNode(c_fn_str)
+			dotg.Nodes = append(dotg.Nodes, node)
 		}
+		nodes_map[c_fn_str] = node
+		fmt.Println(c_fn_str)
+		c_node = c_graph.NextNode(c_node)
 	}
-	fns := make(map[string]bool)
-	for _, node := range nodes {
-		caller_fn := trimBrace(node.Get("label"))
-		fmt.Printf("c graph visit %s\n", caller_fn)
-		if strings.Contains(caller_fn, "_Cfunc_") {
-			continue
-		}
-		var caller *dotNode
-		if fns[caller_fn] {
-			caller = findNode(caller_fn, dotg)
-		} else {
-			fns[caller_fn] = true
-			caller = defaultNode(caller_fn)
-		}
-		edge := cgograph.FirstOut(node)
-		for edge != nil {
-			var callee *dotNode
-			callee_exist := false
-			fmt.Printf("edge: from %s to %s\n", node.Get("label"), edge.Node().Get("label"))
-			callee_fn := trimBrace(edge.Node().Get("label"))
-			if fns[callee_fn] {
-				callee = findNode(callee_fn, dotg)
-			} else {
-				fns[callee_fn] = true
-				callee = findNode(callee_fn, dotg)
-				if callee != nil {
-					callee_exist = true
-				} else {
-					callee = defaultNode(callee_fn)
-				}
-			}
-			dotg.Nodes = append(dotg.Nodes, caller)
-			if !callee_exist {
-				dotg.Nodes = append(dotg.Nodes, callee)
-			}
+	fmt.Println("--------------------\nadd out edges\n--------------------")
+	c_node = c_graph.FirstNode()
+	for c_node != nil {
+		caller := nodes_map[getCFuncName(c_node)]
+		out_edge := c_graph.FirstOut(c_node)
+		for out_edge != nil {
+			callee := nodes_map[getCFuncName(out_edge.Node())]
 			dotg.Edges = append(dotg.Edges, defaultEdge(caller, callee))
-			edge = cgograph.NextOut(edge)
+			out_edge = c_graph.NextOut(out_edge)
 		}
+		c_node = c_graph.NextNode(c_node)
 	}
-	for _Cfunc_XXX, _cgo_XXX_Cfunc_XXX := range go2c {
-		fmt.Println(_Cfunc_XXX, _cgo_XXX_Cfunc_XXX)
-		real_callee_fn := unwrap_Cfunc_XXX(_Cfunc_XXX)
-		dotg.Edges = append(dotg.Edges, defaultEdge(findNode(_Cfunc_XXX, dotg), findNode(real_callee_fn, dotg)))
+	fmt.Println("-----------------\nadd Go2C edges\n-----------------")
+	for _Cfunc_XXX, XXX := range go2c {
+		caller := findNode(_Cfunc_XXX, dotg)
+		callee := nodes_map[XXX]
+		edge := defaultEdge(caller, callee)
+		dotg.Edges = append(dotg.Edges, edge)
 	}
 	return dotg
-}
-
-func unwrap_Cfunc_XXX(_Cfunc_XXX string) string {
-	if !strings.HasPrefix(_Cfunc_XXX, "_Cfunc_") {
-		log.Fatalf("%s doesn't has prefix _Cfunc_", _Cfunc_XXX)
-	}
-	return strings.TrimPrefix(_Cfunc_XXX, "_Cfunc_")
 }

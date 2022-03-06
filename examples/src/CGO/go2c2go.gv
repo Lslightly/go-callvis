@@ -1,0 +1,44 @@
+digraph gocallvis {
+    label="CGO";
+    labeljust="l";
+    fontname="Arial";
+    fontsize="14";
+    rankdir="LR";
+    bgcolor="lightgray";
+    style="solid";
+    penwidth="0.5";
+    pad="0.0";
+    nodesep="0.35";
+
+    node [shape="box" style="filled,rounded" fillcolor="honeydew" fontname="Verdana" penwidth="1.0" margin="0.05,0.0"];
+    edge [minlen="2"]
+
+    subgraph "cluster_focus" {
+        bgcolor="#e6ecfa";
+label="main";
+labelloc="t";
+labeljust="c";
+fontsize="18";
+        
+        "CGO._Cfunc_test" [ fillcolor="lightblue" label="_Cfunc_test" penwidth="0.5" tooltip="CGO._Cfunc_test | defined in 53861886897a0786f9dec7f32be847304781fdb2801a094c7d3d2ec61cd5e5d3-d:49\nat 53861886897a0786f9dec7f32be847304781fdb2801a094c7d3d2ec61cd5e5d3-d:50: calling [CGO._cgo_runtime_cgocall]" ]
+        "CGO._cgo_runtime_cgocall" [ label="_cgo_runtime_cgocall" penwidth="0.5" tooltip="CGO._cgo_runtime_cgocall | defined in 53861886897a0786f9dec7f32be847304781fdb2801a094c7d3d2ec61cd5e5d3-d:23" fillcolor="lightblue" ]
+        "CGO.main" [ fillcolor="lightblue" label="main" penwidth="0.5" tooltip="CGO.main | defined in main.go:8\nat main.go:9: calling [CGO._Cfunc_test]\nat main.go:10: calling [CGO._Cfunc_GO2C]\nat main.go:11: calling [CGO.C2GO]" ]
+        "CGO._Cfunc_GO2C" [ fillcolor="lightblue" label="_Cfunc_GO2C" penwidth="0.5" tooltip="CGO._Cfunc_GO2C | defined in 53861886897a0786f9dec7f32be847304781fdb2801a094c7d3d2ec61cd5e5d3-d:37\nat 53861886897a0786f9dec7f32be847304781fdb2801a094c7d3d2ec61cd5e5d3-d:38: calling [CGO._cgo_runtime_cgocall]" ]
+        "CGO.C2GO" [ fillcolor="lightblue" label="C2GO" penwidth="1.5" tooltip="CGO.C2GO | defined in callee.go:9" ]
+        
+    }
+
+    "CGO._Cfunc_test" -> "CGO._cgo_runtime_cgocall" [ tooltip="at 53861886897a0786f9dec7f32be847304781fdb2801a094c7d3d2ec61cd5e5d3-d:50: calling [CGO._cgo_runtime_cgocall]" ]
+    "CGO.main" -> "CGO._Cfunc_test" [ tooltip="at main.go:9: calling [CGO._Cfunc_test]" ]
+    "CGO._Cfunc_GO2C" -> "CGO._cgo_runtime_cgocall" [ tooltip="at 53861886897a0786f9dec7f32be847304781fdb2801a094c7d3d2ec61cd5e5d3-d:38: calling [CGO._cgo_runtime_cgocall]" ]
+    "CGO.main" -> "CGO._Cfunc_GO2C" [ tooltip="at main.go:10: calling [CGO._Cfunc_GO2C]" ]
+    "CGO.main" -> "CGO.C2GO" [ tooltip="at main.go:11: calling [CGO.C2GO]" ]
+    "test1" -> "printf" [ fillcolor="lightblue" label="" style="dotted,filled" tooltip="" ]
+    "test" -> "printf" [ tooltip="" fillcolor="lightblue" label="" style="dotted,filled" ]
+    "test" -> "fflush" [ fillcolor="lightblue" label="" style="dotted,filled" tooltip="" ]
+    "test" -> "CGO.C2GO" [ style="dotted,filled" tooltip="" fillcolor="lightblue" label="" ]
+    "GO2C" -> "printf" [ fillcolor="lightblue" label="" style="dotted,filled" tooltip="" ]
+    "GO2C" -> "fflush" [ fillcolor="lightblue" label="" style="dotted,filled" tooltip="" ]
+    "CGO._Cfunc_test" -> "test" [ fillcolor="lightblue" label="" style="dotted,filled" tooltip="" ]
+    "CGO._Cfunc_GO2C" -> "GO2C" [ label="" style="dotted,filled" tooltip="" fillcolor="lightblue" ]
+}

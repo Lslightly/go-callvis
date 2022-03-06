@@ -1,0 +1,16 @@
+digraph "Call graph: tmp.ll" {
+	label="Call graph: tmp.ll";
+
+	Node0x630d070 [shape=record,label="{test1}"];
+	Node0x630d070 -> Node0x630d120;
+	Node0x630d120 [shape=record,label="{printf}"];
+	Node0x630d640 [shape=record,label="{test}"];
+	Node0x630d640 -> Node0x630d120;
+	Node0x630d640 -> Node0x630d7a0;
+	Node0x630d640 -> Node0x630d820;
+	Node0x630d7a0 [shape=record,label="{fflush}"];
+	Node0x630d820 [shape=record,label="{C2GO}"];
+	Node0x630dad0 [shape=record,label="{GO2C}"];
+	Node0x630dad0 -> Node0x630d120;
+	Node0x630dad0 -> Node0x630d7a0;
+}
