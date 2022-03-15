@@ -35,6 +35,10 @@ type D struct {
 	A
 }
 
+func test(inf Inf) {
+	inf.A1()
+}
+
 func main() {
 	var c C
 	println("c call c.A1(), c.B1()")
@@ -45,4 +49,5 @@ func main() {
 	println("d call d.A1(), d.B1()")
 	d.A1()
 	d.B1()
+	test(c)
 }

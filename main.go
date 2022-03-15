@@ -45,10 +45,9 @@ var (
 	outputFile   = flag.String("file", "", "output filename - omit to use server mode")
 	outputFormat = flag.String("format", "svg", "output file format [svg | png | jpg | ...]")
 	cacheDir     = flag.String("cacheDir", "", "Enable caching to avoid unnecessary re-rendering, you can force rendering by adding 'refresh=true' to the URL query or emptying the cache directory")
-
-	debugFlag       = flag.Bool("debug", false, "Enable verbose log.")
-	versionFlag     = flag.Bool("version", false, "Show version and exit.")
-	c_dot_callgraph = flag.String("c_dot_callgraph", "", "C code's callgraph. Use `clang -c -emit-llvm XXX.c -o XXX.bc` to generate bitcode files for all C files. Then use `llvm-link -S X1.bc X2.bc ... -o tmp.ll` to get integrated llvm IR file")
+	debugFlag    = flag.Bool("debug", false, "Enable verbose log.")
+	versionFlag  = flag.Bool("version", false, "Show version and exit.")
+	c_root_path  = flag.String("c_root_path", "", "cgo package's root path")
 )
 
 func init() {
@@ -59,7 +58,21 @@ func init() {
 	flag.StringVar(&nodeshape, "nodeshape", "box", "graph node shape (see graphvis manpage for valid values)")
 	flag.StringVar(&nodestyle, "nodestyle", "filled,rounded", "graph node style (see graphvis manpage for valid values)")
 	flag.StringVar(&rankdir, "rankdir", "LR", "Direction of graph layout [LR | RL | TB | BT]")
+	flag.Var(&DSymbols, "unifdef", "unifdef preprocess symbol")
 }
+
+type unifdefSymbols []string
+
+func (i *unifdefSymbols) String() string {
+	return "unifdefSymbols"
+}
+
+func (i *unifdefSymbols) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
+var DSymbols unifdefSymbols
 
 func logf(f string, a ...interface{}) {
 	if *debugFlag {
