@@ -63,9 +63,9 @@ func (a *analysis) DoAnalysis(
 	args []string,
 ) error {
 	cfg := &packages.Config{
-		Mode:  packages.LoadAllSyntax,
-		Tests: tests,
-		Dir:   dir,
+		Mode:       packages.LoadAllSyntax,
+		Tests:      tests,
+		Dir:        dir,
 		BuildFlags: build.Default.BuildTags,
 	}
 
@@ -98,9 +98,9 @@ func (a *analysis) DoAnalysis(
 	}
 	//cg.DeleteSyntheticNodes()
 
-	a.prog   = prog
-	a.pkgs   = pkgs
-	a.mains  = mains
+	a.prog = prog
+	a.pkgs = pkgs
+	a.mains = mains
 	a.result = result
 	return nil
 }
@@ -119,10 +119,10 @@ func (a *analysis) OptsSetup() {
 }
 
 func (a *analysis) ProcessListArgs() (e error) {
-	var groupBy      []string
-	var ignorePaths  []string
+	var groupBy []string
+	var ignorePaths []string
 	var includePaths []string
-	var limitPaths   []string
+	var limitPaths []string
 
 	for _, g := range strings.Split(a.opts.group[0], ",") {
 		g := strings.TrimSpace(g)
@@ -165,7 +165,7 @@ func (a *analysis) ProcessListArgs() (e error) {
 	return
 }
 
-func (a *analysis) OverrideByHTTP(r *http.Request) () {
+func (a *analysis) OverrideByHTTP(r *http.Request) {
 	if f := r.FormValue("f"); f == "all" {
 		a.opts.focus = ""
 	} else if f != "" {

@@ -48,6 +48,7 @@ var (
 	debugFlag    = flag.Bool("debug", false, "Enable verbose log.")
 	versionFlag  = flag.Bool("version", false, "Show version and exit.")
 	c_root_path  = flag.String("c_root_path", "", "cgo package's root path")
+	c_dot_path   = flag.String("c_dot_path", "", "cgo's dot format callgraph")
 )
 
 func init() {

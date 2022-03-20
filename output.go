@@ -5,19 +5,11 @@ import (
 	"fmt"
 	"go/build"
 	"go/types"
-	"io/fs"
-	"io/ioutil"
-	"log"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/goccy/go-graphviz"
-	"github.com/goccy/go-graphviz/cgraph"
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/ssa"
-	"golang.org/x/tools/go/ssa/ssautil"
 )
 
 func isSynthetic(edge *callgraph.Edge) bool {
@@ -474,21 +466,15 @@ func printOutput(
 	}
 
 	///MYCODE
-	var go2c map[string]string
-	if _, err := os.Stat(*c_root_path); err == nil {
-		if err := genObjDir(); err != nil {
-			logf("gen obj dir error")
+	if *c_root_path != "" {
+		*c_root_path = addSlash(*c_root_path)
+		if err = genCdotCallgraph(prog); err != nil {
 			return nil, err
 		}
-		if err := genCDotCallGraph(); err != nil {
-			logf("gen callgraph error")
-			return nil, err
-		}
-		go2c = getGO2Cmap(prog)
-		dotg = addCGOdotGraph(go2c, dotg)
-	} else {
-		fmt.Printf("%s does not exist\n", *c_root_path)
-		return nil, err
+		*c_dot_path = absDefaultDotPath
+	}
+	if *c_dot_path != "" {
+		dotg = addCGOdotGraph(prog, dotg)
 	}
 
 	var buf bytes.Buffer
@@ -499,276 +485,11 @@ func printOutput(
 	return buf.Bytes(), nil
 }
 
-const buildPathStr = "build/"
-
-var dotPathStr string
-
 ///MYCODE
-//	generate _obj/ dir
-func genObjDir() error {
-	obj_path := *c_root_path + "_obj"
-	if _, err := os.Lstat(obj_path); err == nil {
-		if err := os.RemoveAll(obj_path); err != nil {
-			return err
-		}
+func addSlash(src string) string {
+	if src[len(src)-1] != '/' {
+		return src + "/"
+	} else {
+		return src
 	}
-	err := os.Mkdir(obj_path, 0766)
-	if err != nil {
-		return err
-	}
-	go_files := make([]string, 0)
-	visit_fn := func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") {
-			return nil
-		}
-		go_files = append(go_files, path)
-		return nil
-	}
-	if err := filepath.WalkDir(
-		*c_root_path,
-		visit_fn,
-	); err != nil {
-		return err
-	}
-	cgo_args := []string{"tool", "cgo", "-objdir", obj_path}
-	for _, go_file := range go_files {
-		tmp := cgo_args
-		tmp = append(tmp, go_file)
-		gen_obj_cmd := exec.Command("go", tmp...)
-		logf("go %v", tmp)
-		if b, err := gen_obj_cmd.CombinedOutput(); err != nil {
-			logf(string(b))
-			continue
-		}
-	}
-	return nil
-}
-
-///MYCODE
-//	copy file to build/
-func copyFileToBuild(src_path string, dst_path string) error {
-	b, err := os.ReadFile(src_path)
-	if err != nil {
-		logf("read %s fail", src_path)
-		return err
-	}
-	err = os.WriteFile(dst_path, b, 0644)
-	if err != nil {
-		logf("copy %s fail", dst_path)
-	}
-	return nil
-}
-
-///MYCODE
-//	generate all .c files' bitcode file in `build/`
-//	generate combined tmp.ll and tmp.ll.callgraph.dot file
-func genCDotCallGraph() error {
-	build_path := *c_root_path + buildPathStr
-	if _, err := os.Lstat(build_path); err == nil {
-		if err := os.RemoveAll(build_path); err != nil {
-			return err
-		}
-	}
-	err := os.Mkdir(build_path, 0766)
-	if err != nil {
-		return err
-	}
-	bc_files := make([]string, 0)
-
-	// copy all .c, .h file to build/ and then unifdef them if necessary
-	copy_unifdef_fn := func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(path, ".c") && !strings.HasSuffix(path, ".h") {
-			return nil
-		}
-		if d.Name() == "_cgo_export.c" {
-			return nil
-		}
-		dst_path := build_path + d.Name()
-		if err := copyFileToBuild(path, dst_path); err != nil {
-			logf("copy %s error", path)
-			return nil
-		}
-		if len(DSymbols) != 0 {
-			unifdef_args := DSymbols
-			unifdef_args = append(unifdef_args, "-o", dst_path, dst_path)
-			unifdef_cmd := exec.Command("unifdef", unifdef_args...)
-			if b, err := unifdef_cmd.CombinedOutput(); err != nil {
-				logf("%s fail", unifdef_cmd.String())
-				logf(string(b))
-				return nil
-			}
-		}
-		return nil
-	}
-	if err := filepath.WalkDir(
-		*c_root_path,
-		copy_unifdef_fn,
-	); err != nil {
-		return err
-	}
-
-	gen_bc_fn := func(path string, d fs.DirEntry, err error) error {
-		if !strings.HasSuffix(path, ".c") {
-			return nil
-		}
-		bc_file_name := path + ".bc"
-		bc_files = append(bc_files, bc_file_name)
-		clang_args := []string{"-c", "-emit-llvm", "-fPIC", "-m64", "-pthread", "-fmessage-length=0", "-o", bc_file_name, path}
-		bc_gen_cmd := exec.Command("clang", clang_args...)
-		logf(bc_gen_cmd.String())
-		if b, e := bc_gen_cmd.CombinedOutput(); e != nil {
-			logf(string(b))
-			bc_files_len := len(bc_files)
-			bc_files = bc_files[:bc_files_len-1]
-			return nil
-		}
-		return nil
-	}
-
-	if err := filepath.WalkDir(
-		build_path,
-		gen_bc_fn,
-	); err != nil {
-		return err
-	}
-
-	logf(".bc files: %v\n", bc_files)
-
-	ll_path := build_path + "tmp.ll"
-	dotPathStr = ll_path + ".callgraph.dot"
-
-	compile_args := []string{"-S"}
-	compile_args = append(compile_args, bc_files...)
-	compile_args = append(compile_args, "-o")
-	compile_args = append(compile_args, ll_path)
-	link_cmd := exec.Command("llvm-link", compile_args...)
-	if b, err := link_cmd.CombinedOutput(); err != nil {
-		logf(string(b))
-		return err
-	}
-	dot_gen_cmd := exec.Command("opt", "-analyze", "-dot-callgraph", ll_path)
-	if b, err := dot_gen_cmd.CombinedOutput(); err != nil {
-		logf(string(b))
-		return err
-	}
-	return nil
-}
-
-///MYCODE
-//	need to use `clang -c -emit-llvm XXX.c -o XXX.bc` to generate bitcode files for all C files.
-//	then use `llvm-link -S X1.bc X2.bc ... -o tmp.ll` to get integrated llvm IR file
-//	last, this function is called to genereate callgraph tmp.ll.callgraph.dot
-func getCGOdotGraphBytes() []byte {
-	outbyte, _ := ioutil.ReadFile(dotPathStr)
-	return outbyte
-}
-
-///MYCODE
-//	first find node in C nodes, then find node in Go nodes
-//	return node whose name matches fn, nil instead.
-func findNode(fn string, dotg *dotGraph) *dotNode {
-	nodes := dotg.Nodes
-	for _, node := range nodes {
-		if node.ID == fn {
-			return node
-		}
-	}
-	for _, node := range dotg.Cluster.Nodes {
-		elems := strings.Split(node.ID, ".")
-		real_fn := elems[len(elems)-1]
-		if real_fn == fn {
-			return node
-		}
-	}
-	return nil
-}
-
-///MYCODE
-//	return map[_Cfunc_XXX] = XXX
-func getGO2Cmap(prog *ssa.Program) map[string]string {
-	go2c := make(map[string]string)
-	for fn := range ssautil.AllFunctions(prog) {
-		if strings.HasPrefix(fn.Name(), "_Cfunc_") {
-			go2c[fn.Name()] = fn.Name()[7:]
-		}
-	}
-	logf("go2c map: %v\n", go2c)
-	return go2c
-}
-
-///MYCODE
-func trim2Brace(c_fn_str string) string {
-	t := len(c_fn_str)
-	return c_fn_str[1 : t-1]
-}
-
-///MYCODE
-//	get name for C's node
-func getCFuncName(c_node *cgraph.Node) string {
-	return trim2Brace(c_node.Get("label"))
-}
-
-///MYCODE
-func addCGOdotGraph(go2c map[string]string, dotg *dotGraph) *dotGraph {
-	c_graph, err := graphviz.ParseBytes(getCGOdotGraphBytes())
-	if err != nil {
-		log.Fatal("graphviz.ParseBytes error")
-	}
-	logf("\n--------------------\nget CGO callgraph bytes\n--------------------")
-	c_edges_num := c_graph.NumberEdges()
-	c_node := c_graph.FirstNode()
-	c_nodes_num := c_graph.NumberNodes()
-	logf("nodenum %d", c_nodes_num)
-	logf("edgenum %d", c_edges_num)
-	nodes_map := make(map[string]*dotNode)
-	logf("\n----------------\nget C's callgraph nodes\n----------------\n")
-	for c_node != nil {
-		c_fn_str := getCFuncName(c_node)
-
-		var node *dotNode
-		if node = findNode(c_fn_str, dotg); node == nil {
-			logf("%s in c side", c_fn_str)
-			node = defaultNode(c_fn_str)
-			dotg.Nodes = append(dotg.Nodes, node)
-		} else {
-			logf("%s in go side", c_fn_str)
-		}
-		nodes_map[c_fn_str] = node
-		c_node = c_graph.NextNode(c_node)
-	}
-	logf("\n--------------------\nadd C edges\n--------------------\n")
-	c_node = c_graph.FirstNode()
-	for c_node != nil {
-		caller := nodes_map[getCFuncName(c_node)]
-		out_edge := c_graph.FirstOut(c_node)
-		for out_edge != nil {
-			callee := nodes_map[getCFuncName(out_edge.Node())]
-			dotg.Edges = append(dotg.Edges, defaultEdge(caller, callee))
-			logf("add C's edge: %s -> %s", caller.ID, callee.ID)
-			out_edge = c_graph.NextOut(out_edge)
-		}
-		c_node = c_graph.NextNode(c_node)
-	}
-	logf("\n-----------------\nadd Go2C edges\n-----------------\n")
-	for _Cfunc_XXX, XXX := range go2c {
-		caller := findNode(_Cfunc_XXX, dotg)
-		if caller == nil {
-			logf("go side %s()'s node not found", _Cfunc_XXX)
-		}
-		callee, ok := nodes_map[XXX]
-		if !ok {
-			logf("%s not found in C side", XXX)
-			callee = defaultNode(XXX)
-			dotg.Nodes = append(dotg.Nodes, callee)
-		}
-		edge := defaultEdge(caller, callee)
-		dotg.Edges = append(dotg.Edges, edge)
-	}
-	return dotg
 }
